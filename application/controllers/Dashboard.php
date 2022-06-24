@@ -6,82 +6,61 @@ class Dashboard extends CP_Controller
 
 	public function index()
 	{
+		// cpu usage
+		$load = sys_getloadavg();
+		$data['cpu_usage_percent'] =  $load[0] * 100;
+
+		// memory usage
+		$free			= shell_exec('free');
+		$free			= (string) trim($free);
+		$free_arr		= explode("\n", $free);
+		$mem			= explode(" ", $free_arr[1]);
+		$mem			= array_filter($mem);
+		$mem			= array_merge($mem);
+		$memory_usage	= $mem[2] / $mem[1] * 100;
+
+		// storage usage
+		$data['memory_total']			= $mem[1];
+		$data['memory_used']			= $mem[2];
+		$data['memory_usage_percent']	= $memory_usage;
+
+		$ds								= disk_total_space("/");
+		$df								= disk_free_space("/");
+		$data['disk_free']				= $df;
+		$data['disk_use']				= $ds - $df;
+		$data['disk_entire']			= $ds;
+		$data['disk_usage_percent']		= $df / $ds * 100;
+
 		$this->document->config( 'page_title', 'Dashboard' );
-		$this->document->view('dashboard');
+		$this->document->view('dashboard', $data);
 	}
 
-	public function system_info()
+	public function get_server_info()
 	{
+		// cpu usage
 		$load = sys_getloadavg();
-		$data['cpu'] =  $load[0] * 100;
+		$data['cpu_usage_percent'] =  $load[0] * 100;
 
-		cp_api_json($data);
-	}
+		// memory usage
+		$free			= shell_exec('free');
+		$free			= (string) trim($free);
+		$free_arr		= explode("\n", $free);
+		$mem			= explode(" ", $free_arr[1]);
+		$mem			= array_filter($mem);
+		$mem			= array_merge($mem);
+		$memory_usage	= $mem[2] / $mem[1] * 100;
 
-	public function _system_info()
-	{
-		// load system information
-		$start_time = microtime(TRUE);
-		$operating_system = PHP_OS_FAMILY;
+		// storage usage
+		$data['memory_total']			= $mem[1];
+		$data['memory_used']			= $mem[2];
+		$data['memory_usage_percent']	= $memory_usage;
 
-		// linux CPU
-		$load = sys_getloadavg();
-		$cpuload = $load[0];
-		$cpu_count = shell_exec('nproc');
-
-		// linux MEM
-		$free = shell_exec('free');
-		$free = (string)trim($free);
-		$free_arr = explode("\n", $free);
-		$mem = explode(" ", $free_arr[1]);
-		$mem = array_filter($mem, function($value) { return ($value !== null && $value !== false && $value !== ''); });
-		$mem = array_merge($mem);
-		$memtotal = round($mem[1] / 1000000,2);
-		$memused = round($mem[2] / 1000000,2);
-		$memfree = round($mem[3] / 1000000,2);
-		$memshared = round($mem[4] / 1000000,2);
-		$memcached = round($mem[5] / 1000000,2);
-		$memavailable = round($mem[6] / 1000000,2);
-
-		$connections = `netstat -ntu | grep :80 | grep ESTABLISHED | grep -v LISTEN | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -rn | grep -v 127.0.0.1 | wc -l`;
-		$totalconnections = `netstat -ntu | grep :80 | grep -v LISTEN | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -rn | grep -v 127.0.0.1 | wc -l`;
-
-		$memusage = round(($memused/$memtotal)*100);
-
-		$phpload = round(memory_get_usage() / 1000000,2);
-
-		$diskfree = round(disk_free_space(".") / 1000000000);
-		$disktotal = round(disk_total_space(".") / 1000000000);
-		$diskused = round($disktotal - $diskfree);
-
-		$diskusage = round($diskused/$disktotal*100);
-
-		$end_time = microtime(TRUE);
-		$time_taken = $end_time - $start_time;
-		$total_time = round($time_taken,4);
-
-		// use servercheck.php?json=1
-		if (isset($_GET['json'])) {
-			echo '{"ram":'.$memusage.',"cpu":'.$cpuload.',"disk":'.$diskusage.',"connections":'.$totalconnections.'}';
-			exit;
-		}
-
-		$data = array(
-			'memusage'			=> $memusage,
-			'cpuload'			=> $cpuload,
-			'diskusage'			=> $diskusage,
-			'connections'		=> $connections,
-			'totalconnections'	=> $totalconnections,
-			'cpu_count'			=> $cpu_count,
-			'memtotal'			=> $memtotal,
-			'memused'			=> $memused,
-			'memavailable'		=> $memavailable,
-			'diskfree'			=> $diskfree,
-			'diskused'			=> $diskused,
-			'disktotal'			=> $disktotal,
-			'phpload'			=> $phpload,
-			'total_time'		=> $total_time
-		);
+		$ds								= disk_total_space("/");
+		$df								= disk_free_space("/");
+		$data['disk_free']				= $df;
+		$data['disk_use']				= $ds - $df;
+		$data['disk_entire']			= $ds;
+		$data['disk_usage_percent']		= $df / $ds * 100;
 
 		cp_api_json($data);
 	}
